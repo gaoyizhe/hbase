@@ -395,15 +395,6 @@ END
            echo "[INFO] There are ${currentBuild.changeSets.size()} change sets."
            def seenJiras = []
            for (int i = 0; i < currentBuild.changeSets.size(); i++) {
-/*
-             def changelist = currentBuild.changeSets.get(i)
-             if ( changelist.isEmptySet() ) {
-               echo "[DEBUG] change set was empty, skipping JIRA comments."
-             } else {
-               echo "[DEBUG] there are changes in the change set. Attempting to post comments."
-             }
-             def changes = changelist.getItems()
-*/
              def changes = currentBuild.changeSets.get(i).getItems()
              for (int j = 0; j < changes.length; j++) {
                def change = changes[j]
@@ -414,26 +405,7 @@ END
                echo "	${change.commitId}"
                echo "     ${change.author}"
                echo ""
-               // Start workaround for JENKINS-46358
-               // Start workaround for unknown jenkins error where writeFile requires a serialization
-               //writeFile file: 'tmp_commit_file', text: msg
-               sh  """#!/usr/bin/env bash
-                 cat << 'EOF' > tmp_commit_file
-${msg}
-EOF
-                 echo 'wrote message into file.'
-                 cat tmp_commit_file
-                 grep -o -E 'HBASE-[0-9]+' 'tmp_commit_file' >matched_jiras
-                 echo "finished filtering via grep."
-                 cat matched_jiras
-"""
-               def jiras = readFile(file: 'matched_jiras').split()
-               // End workaround for JENKINS-46258
-               if (jiras.length == 0) {
-                 echo "[WARN] no JIRA key found in message, TODO email committer"
-               }
-               for (int k = 0; k < jiras.length; k++) {
-                 def currentIssue = jiras[k]
+               msg.eachMatch("HBASE-[0-9]+") { currentIssue ->
                  echo "[DEBUG] found jira key: ${currentIssue}"
                  if ( currentIssue in seenJiras ) {
                    echo "[DEBUG] already commented on ${currentIssue}."
